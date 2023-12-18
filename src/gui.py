@@ -1,4 +1,4 @@
-
+import random
 import asyncio
 from enum import Enum, auto
 
@@ -8,6 +8,7 @@ import queue
 import justpy as jp
 # FOR FUTURE PROJECTS: check out the justpy.react functionality: https://justpy.io/blog/reactivity/
 
+from experiment_definitions import experiments
 
 import unified_planning as up
 from unified_planning.shortcuts import *
@@ -38,6 +39,8 @@ class Gui():
 
         self.plan_div: Optional[jp.Div] = None
         self.graph_image_div: Optional[jp.Img] = None
+        self.state_goal_div: Optional[jp.Div] = None
+        self.state_div: Optional[jp.Div] = None
 
         self.logger = logging.getLogger(__name__)
         logging.basicConfig(format='%(asctime)s %(message)s')
@@ -45,6 +48,14 @@ class Gui():
 
     def reset_execution(self):
         self.mode = Mode.GENERATING_PROBLEM
+
+    def update_state_and_goal(self, msg):
+        from main_page import PLAN_PART_P_CLASS, PLAN_PART_P_STYLE
+        state = experiments["parallel_actions"]["initial_state"]
+        keyvals = [f"{key}: {val}" for key, val in state.items()]
+        self.state_div.delete_components()
+        for keyval in keyvals:
+            _ = jp.P(a=self.state_div, text=keyval, classes=PLAN_PART_P_CLASS, style=PLAN_PART_P_STYLE)
 
     def update_planning_execution(self):
         from main_page import PLAN_PART_P_CLASS, PLAN_PART_P_STYLE
@@ -145,6 +156,7 @@ class Gui():
 
 def write_action_instance(action_instance: up.plans.ActionInstance) -> str:
     return str(action_instance)
+
 
 async def reload_page():
     for page in jp.WebPage.instances.values():

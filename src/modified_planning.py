@@ -4,6 +4,8 @@ from typing import Tuple
 from up_graphene_engine.engine import  GrapheneEngine
 from gui import Gui
 
+from experiment_definitions import experiments
+
 from unified_planning.shortcuts import *
 import unified_planning as up
 import unified_planning.engines
@@ -196,41 +198,12 @@ def planning(engine: GrapheneEngine, gui: Gui, reload_page):
     cur_experiment = "parallel_actions"
     cur_step = 0
 
-    experiments = {
-        "parallel_actions": {
-            "initial_state": {
-                "capabilities_available": "true",
-                "job_available": "false",
-                "battery_charging": "charging",
-                "battery_level": "low",
-                "have_error_report": "false",
-                "hw_self_test_required": "false",
-                "power_saving_state": "deactivated",
-            },
-            "steps": [
-                {
-                    "description": "The robot is arrived at the charger station (battery_charging = charging) because its battery was low (battery_level = low). "\
-                                    "It is ready to start some initialization procedures.",
-                    "state_change": {}
-                },
-                {
-                    "description": "The initialization procedure has been started.",
-                    "state_change": {
-                        "initialize_robot__state": "running"
-                    }
-                },
-            ]
-        }
-    }
-
     for key, val in experiments[cur_experiment]["initial_state"].items():
         problem.set_initial_value(problem.fluent(key), problem.object(key + "_" + val))
 
     for c in range(0, cur_step):
         for key, val in experiments[cur_experiment]["steps"][cur_step]["state_change"].items():
             problem.set_initial_value(problem.fluent(key), problem.object(key + "_" + val))
-
-    #problem.set_initial_value(problem.fluent("initialize_robot__state"), problem.object("running"))
 
     act_abort__execute_hw_self_test = InstantaneousAction("abort__execute_hw_self_test")
     act_abort__execute_hw_self_test.add_precondition(Equals(execute_hw_self_test__state, running))

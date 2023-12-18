@@ -124,8 +124,17 @@ def main_page(gui: Gui):
         text="",
     )
 
+    load_state = jp.Input(
+        a=actions_div,
+        value="LOAD STATE",
+        type="submit",
+        classes=ADD_BUTTON_CLASS,
+        style=ADD_BUTTON_STYLE,
+    )
+    load_state.on('click', gui.update_state_and_goal)
+
     select = jp.Select(a=actions_div)
-    select.add(jp.Option(value="one", text="First initial state"))
+    select.add(jp.Option(value="parallel_actions", text="Parallel actions"))
     select.add(jp.Option(value="two", text="Second initial state"))
     select.add(jp.Option(value="three", text="Third initial state"))
     select.add(jp.Option(value="four", text="Fourth initial state"))
@@ -139,13 +148,28 @@ def main_page(gui: Gui):
     )
     solve.on('click', gui.generate_problem_click)
 
-    plan_div = jp.Div(
+    # STATE AND GOAL SECTION
+    gui.state_goal_div = jp.Div(
+            a=main_body_div,
+            text="STATE AND GOAL",
+            classes=PLAN_DIV_CLASS,
+            style=PLAN_DIV_STYLE,
+        )
+    _ = jp.P(text="State:", a=gui.state_goal_div, classes=PLAN_PART_P_CLASS, style=PLAN_PART_P_STYLE)
+    gui.state_div = jp.Div(
+            a=gui.state_goal_div,
+            text="Choose the experiment and the step to see the current state",
+            classes=PLAN_PART_P_CLASS,
+            style=PLAN_PART_P_STYLE,
+    )
+
+    # PLAN SECTION
+    gui.plan_div = jp.Div(
         a=main_body_div,
-        text="PLAN DESCRIPTION:",
+        text="PLAN",
         classes=PLAN_DIV_CLASS,
         style=PLAN_DIV_STYLE,
     )
-    gui.plan_div = plan_div
 
     gui.update_planning_execution()
 
