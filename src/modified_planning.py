@@ -44,6 +44,7 @@ def planning(engine: GrapheneEngine, gui: Gui, reload_page):
     param_recharging_enabled = Fluent("param_recharging_enabled", param_recharging_enabled_type) # NOTE never used
     power_saving_state = Fluent("power_saving_state", power_saving_state_type)
     have_recharging_job = Fluent("have_recharging_job", have_recharging_job_type) # NOTE never used
+
     robot_needs_execute_offline_tasks = Fluent("robot_needs_execute_offline_tasks", robot_needs_execute_offline_tasks_type)
     robot_needs_initialization = Fluent("robot_needs_initialization", robot_needs_initialization_type)
     tower_busy = Fluent("tower_busy", tower_busy_type)
@@ -191,6 +192,45 @@ def planning(engine: GrapheneEngine, gui: Gui, reload_page):
     problem.add_fluent(execute_offline_tasks__state, default_initial_value=ObjectExp(idle))
     problem.add_fluent(initialize_robot__state, default_initial_value=ObjectExp(idle))
     problem.add_fluent(power_saving_action__state, default_initial_value=ObjectExp(idle))
+
+    cur_experiment = "parallel_actions"
+    cur_step = 0
+
+    experiments = {
+        "parallel_actions": {
+            "initial_state": {
+                "capabilities_available": "true",
+                "job_available": "false",
+                "battery_charging": "charging",
+                "battery_level": "low",
+                "have_error_report": "false",
+                "hw_self_test_required": "false",
+                "power_saving_state": "deactivated",
+            },
+            "steps": [
+                {
+                    "description": "The robot is arrived at the charger station (battery_charging = charging) because its battery was low (battery_level = low). "\
+                                    "It is ready to start some initialization procedures.",
+                    "state_change": {}
+                },
+                {
+                    "description": "The initialization procedure has been started.",
+                    "state_change": {
+                        "initialize_robot__state": "running"
+                    }
+                },
+            ]
+        }
+    }
+
+    for key, val in experiments[cur_experiment]["initial_state"].items():
+        problem.set_initial_value(problem.fluent(key), problem.object(key + "_" + val))
+
+    for c in range(0, cur_step):
+        for key, val in experiments[cur_experiment]["steps"][cur_step]["state_change"].items():
+            problem.set_initial_value(problem.fluent(key), problem.object(key + "_" + val))
+
+    #problem.set_initial_value(problem.fluent("initialize_robot__state"), problem.object("running"))
 
     act_abort__execute_hw_self_test = InstantaneousAction("abort__execute_hw_self_test")
     act_abort__execute_hw_self_test.add_precondition(Equals(execute_hw_self_test__state, running))

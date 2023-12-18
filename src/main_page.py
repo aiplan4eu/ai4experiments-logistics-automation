@@ -11,16 +11,14 @@ TITLE_TEXT_DIV_STYLE = "font-size: 80px; text-align: center; text-weight: bold;"
 
 DESCRIPTION_STYLE = "margin-top: 15px; font-size: 16px;" + LEFT_MARGIN + RIGHT_MARGIN
 DESCRIPTION_TEXT = """
-Matchcellar demo: The problem of this demo is a classical in temporal planning; you have X fuses to change.
-You can change only one at a time, and to change a fuse you need light. To create light, you need to light a match.
-But a match has a limited duration in time.
-Here you specify:
- * How many matches you have
- * How long does a match lasts
- * How many fuses you have to change
- * How much you take to change a fuse
-After you press SOLVE you will see if the selected number of matches is enough to change all the fuses;
-and eventually, the time schedule to change all the fuses.
+In this case, the planner is deployed on a robot running in a logistics automation environment.
+The specific situation, in this case, is related to the operations that the robot has to perform
+when it is not performing a job, e.g., (re-)initializing its motors, perform some hardware self-test procedures,
+calibrate the IMU, etc.
+Choose the initial situation and press SOLVE for the initial plan. In this use-case, the durative actions
+are split into multiple instantaneous actions, that represent their start, abortion and final success, abortion or failure.
+Afterwards, by advancing the STEP field and pressing SOLVE again, the system simulate the advancement of the state of the
+durative actions and/or some possible unexpected change in the state, that require for a complete replanning.
 """
 SINGLE_DESCRIPTION_STYLE = LEFT_MARGIN + RIGHT_MARGIN
 
@@ -75,14 +73,14 @@ def main_page(gui: Gui):
         style="height: 160px;",
     )
     fbk_logo = jp.Img(
-        src="/static/logos/fbk.png",
+        src="/static/logos/magazino-jh.png",
         a=fbk_logo_div,
         classes="w3-image",
         # style="height: 100%; length: auto;",
     )
     title_text_div = jp.Div(
         a=title_div,
-        text="DRONE",
+        text="LOGISTICS AUTOMATION",
         style=TITLE_TEXT_DIV_STYLE,
     )
     unified_planning_logo_div = jp.Div(
@@ -115,7 +113,7 @@ def main_page(gui: Gui):
 
     actions_div = jp.Div(
         a=main_body_div,
-        text="TITLE",
+        text="PROBLEM",
         classes=ACTIONS_DIV_CLASS,
         style=ACTIONS_DIV_STYLE,
     )
@@ -125,6 +123,12 @@ def main_page(gui: Gui):
         a=actions_div,
         text="",
     )
+
+    select = jp.Select(a=actions_div)
+    select.add(jp.Option(value="one", text="First initial state"))
+    select.add(jp.Option(value="two", text="Second initial state"))
+    select.add(jp.Option(value="three", text="Third initial state"))
+    select.add(jp.Option(value="four", text="Fourth initial state"))
 
     solve = jp.Input(
         a=actions_div,
