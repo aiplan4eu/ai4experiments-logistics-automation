@@ -41,6 +41,8 @@ class Gui():
         self.graph_image_div: Optional[jp.Img] = None
         self.state_goal_div: Optional[jp.Div] = None
         self.state_div: Optional[jp.Div] = None
+        self.experiment_select: Optional[jp.Select] = None
+        self.step_select: Optional[jp.Select] = None
 
         self.logger = logging.getLogger(__name__)
         logging.basicConfig(format='%(asctime)s %(message)s')
@@ -56,6 +58,10 @@ class Gui():
         self.state_div.delete_components()
         for keyval in keyvals:
             _ = jp.P(a=self.state_div, text=keyval, classes=PLAN_PART_P_CLASS, style=PLAN_PART_P_STYLE)
+
+    def update_steps_control(self, msg):
+        self.step_select.delete_components()
+        self.step_select.add(jp.Option(value="x", text=self.experiment_select.value))
 
     def update_planning_execution(self):
         from main_page import PLAN_PART_P_CLASS, PLAN_PART_P_STYLE
