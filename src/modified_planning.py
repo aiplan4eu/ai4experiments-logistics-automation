@@ -198,12 +198,21 @@ def planning(engine: GrapheneEngine, gui: Gui, reload_page):
     cur_experiment = "parallel_actions"
     cur_step = 0
 
+    logging.info(experiments[cur_experiment]["initial_state"])
     for key, val in experiments[cur_experiment]["initial_state"].items():
-        problem.set_initial_value(problem.fluent(key), problem.object(key + "_" + val))
-
-    for c in range(0, cur_step):
-        for key, val in experiments[cur_experiment]["steps"][cur_step]["state_change"].items():
+        logging.info("%s %s", key, val)
+        if key.endswith("__state"):
+            problem.set_initial_value(problem.fluent(key), problem.object(val))
+        else:
             problem.set_initial_value(problem.fluent(key), problem.object(key + "_" + val))
+
+    for c in range(0, cur_step + 1):
+        for key, val in experiments[cur_experiment]["steps"][cur_step]["state_change"].items():
+            logging.info("> %s %s", key, val)
+            if key.endswith("__state"):
+                problem.set_initial_value(problem.fluent(key), problem.object(val))
+            else:
+                problem.set_initial_value(problem.fluent(key), problem.object(key + "_" + val))
 
     act_abort__execute_hw_self_test = InstantaneousAction("abort__execute_hw_self_test")
     act_abort__execute_hw_self_test.add_precondition(Equals(execute_hw_self_test__state, running))

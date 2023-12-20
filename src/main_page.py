@@ -124,15 +124,6 @@ def main_page(gui: Gui):
         text="",
     )
 
-    load_state = jp.Input(
-        a=actions_div,
-        value="LOAD STATE",
-        type="submit",
-        classes=ADD_BUTTON_CLASS,
-        style=ADD_BUTTON_STYLE,
-    )
-    load_state.on('click', gui.update_state_and_goal)
-
     gui.experiment_select = jp.Select(a=actions_div)
     gui.experiment_select.add(jp.Option(value="parallel_actions", text="Parallel actions"))
     gui.experiment_select.add(jp.Option(value="two", text="Second initial state"))
@@ -141,6 +132,7 @@ def main_page(gui: Gui):
     gui.experiment_select.on("click", gui.update_steps_control)
 
     gui.step_select = jp.Select(a=actions_div)
+    gui.step_select.on("click", gui.update_state_and_goal)
 
     solve = jp.Input(
         a=actions_div,

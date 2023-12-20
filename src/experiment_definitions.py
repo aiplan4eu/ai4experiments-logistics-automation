@@ -8,6 +8,9 @@ experiments = {
             "have_error_report": "false",
             "hw_self_test_required": "false",
             "power_saving_state": "deactivated",
+            "initialize_robot__state": "idle",
+            "execute_offline_tasks__state": "idle",
+            "execute_imu_calibration__state": "idle",
         },
         "steps": [
             {

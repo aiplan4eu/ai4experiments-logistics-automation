@@ -47,13 +47,15 @@ class Gui():
         self.logger = logging.getLogger(__name__)
         logging.basicConfig(format='%(asctime)s %(message)s')
         self.logger.setLevel(logging.INFO)
+        self.logger.info("XXX")
 
     def reset_execution(self):
         self.mode = Mode.GENERATING_PROBLEM
 
     def update_state_and_goal(self, msg):
         from main_page import PLAN_PART_P_CLASS, PLAN_PART_P_STYLE
-        state = experiments["parallel_actions"]["initial_state"]
+        state = experiments[self.experiment_select.value]["initial_state"]
+        state = {**state, **experiments[self.experiment_select.value]["steps"][int(self.step_select.value)]["state_change"]}
         keyvals = [f"{key}: {val}" for key, val in state.items()]
         self.state_div.delete_components()
         for keyval in keyvals:
@@ -61,7 +63,11 @@ class Gui():
 
     def update_steps_control(self, msg):
         self.step_select.delete_components()
-        self.step_select.add(jp.Option(value="x", text=self.experiment_select.value))
+        if self.experiment_select.value in experiments:
+            for s in range(0, len(experiments[self.experiment_select.value]["steps"])):
+                self.step_select.add(jp.Option(value=str(s), text=f"Step {s}"))
+        else:
+            self.step_select.add(jp.Option(value="x", text="ERROR"))
 
     def update_planning_execution(self):
         from main_page import PLAN_PART_P_CLASS, PLAN_PART_P_STYLE
