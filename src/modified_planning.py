@@ -1,8 +1,6 @@
-import networkx as nx
 import logging
-from typing import Tuple
-from up_graphene_engine.engine import  GrapheneEngine
-from gui import Gui
+from up_graphene_engine.engine import GrapheneEngine
+#from gui import Gui
 
 from experiment_definitions import experiments
 
@@ -11,12 +9,15 @@ import unified_planning as up
 import unified_planning.engines
 import unified_planning.model
 import unified_planning.model.metrics
+from unified_planning.engines import PlanGenerationResultStatus
+from unified_planning.engines.mixins.oneshot_planner import OptimalityGuarantee
 
 get_environment().credits_stream = None
 
+#engine = GrapheneEngine(port=8061)
+engine = OneshotPlanner(optimality_guarantee=PlanGenerationResultStatus.SOLVED_OPTIMALLY,)
 
-
-def planning(engine: GrapheneEngine, gui: Gui, reload_page):
+def compute_plan(engine_p: GrapheneEngine, gui: "Gui"):
     logging.info("Generating planning problem...")
 
     environment = up.environment.get_environment()
@@ -195,8 +196,8 @@ def planning(engine: GrapheneEngine, gui: Gui, reload_page):
     problem.add_fluent(initialize_robot__state, default_initial_value=ObjectExp(idle))
     problem.add_fluent(power_saving_action__state, default_initial_value=ObjectExp(idle))
 
-    cur_experiment = "parallel_actions"
-    cur_step = 0
+    cur_experiment = gui.experiment_select.value
+    cur_step = int(gui.step_select.value)
 
     logging.info(experiments[cur_experiment]["initial_state"])
     for key, val in experiments[cur_experiment]["initial_state"].items():
@@ -207,7 +208,7 @@ def planning(engine: GrapheneEngine, gui: Gui, reload_page):
             problem.set_initial_value(problem.fluent(key), problem.object(key + "_" + val))
 
     for c in range(0, cur_step + 1):
-        for key, val in experiments[cur_experiment]["steps"][cur_step]["state_change"].items():
+        for key, val in experiments[cur_experiment]["steps"][c]["state_change"].items():
             logging.info("> %s %s", key, val)
             if key.endswith("__state"):
                 problem.set_initial_value(problem.fluent(key), problem.object(val))
@@ -378,11 +379,21 @@ def planning(engine: GrapheneEngine, gui: Gui, reload_page):
 
     # problem.add_goal(goal=And(Or(Equals((have_error_report), (have_error_report_false)), Equals((have_error_report), (have_error_report_true_acknowledgeable))), Equals((robot_needs_initialization), (robot_needs_initialization_false)), Equals((tower_busy), (tower_busy_false)), Equals((robot_needs_execute_offline_tasks), (robot_needs_execute_offline_tasks_false)), Equals((execute_imu_calibration__state), (running))))
 
-    problem.add_goal(Or(Equals(have_error_report, have_error_report_false), Equals(have_error_report, have_error_report_true_acknowledgeable)))
-    problem.add_goal(Equals(robot_needs_initialization, robot_needs_initialization_false))
-    problem.add_goal(Equals(tower_busy, tower_busy_false))
-    problem.add_goal(Equals(robot_needs_execute_offline_tasks, robot_needs_execute_offline_tasks_false))
-    problem.add_goal(Equals(execute_imu_calibration__state, running))
+    goal_id = experiments[cur_experiment]["steps"][cur_step].get("goal" ,"goal0")
+
+    if goal_id == "goal0":
+        problem.add_goal(Or(Equals(have_error_report, have_error_report_false), Equals(have_error_report, have_error_report_true_acknowledgeable)))
+        problem.add_goal(Equals(robot_needs_initialization, robot_needs_initialization_false))
+        problem.add_goal(Equals(tower_busy, tower_busy_false))
+        #problem.add_goal(Equals(robot_needs_execute_offline_tasks, robot_needs_execute_offline_tasks_false))
+        problem.add_goal(Equals(execute_offline_tasks__state, running))
+        problem.add_goal(Equals(execute_imu_calibration__state, running))
+    elif goal_id == "goal1":
+        problem.add_goal(Equals(execute_imu_calibration__state, idle))
+        problem.add_goal(Equals(execute_offline_tasks__state, idle))
+        problem.add_goal(Equals(execute_hw_self_test__state, idle))
+        problem.add_goal(Equals(initialize_robot__state, idle))
+        problem.add_goal(Equals(robot_needs_initialization, robot_needs_initialization_false))
 
     costs = {}
     costs[act_abort__execute_hw_self_test] = 1
@@ -421,19 +432,20 @@ def planning(engine: GrapheneEngine, gui: Gui, reload_page):
 
     problem.add_quality_metric(MinimizeActionCosts(costs, None))
 
+    compiler1 = Compiler(problem_kind=problem.kind, compilation_kind=CompilationKind.USERTYPE_FLUENTS_REMOVING)
+    comp1_res = compiler1.compile(problem)
 
-    comp_kinds = [CompilationKind.USERTYPE_FLUENTS_REMOVING, CompilationKind.DISJUNCTIVE_CONDITIONS_REMOVING]
-    with Compiler(problem_kind=problem.kind, compilation_kind=CompilationKind.USERTYPE_FLUENTS_REMOVING) as compiler:
-
-        comp_res = compiler.compile(problem)
-
-        with Compiler(problem_kind=comp_res.problem.kind, compilation_kind=CompilationKind.DISJUNCTIVE_CONDITIONS_REMOVING) as compiler_2:
-
-            comp_res_2 = compiler_2.compile(comp_res.problem)
+    compiler2 = Compiler(problem_kind=comp1_res.problem.kind, compilation_kind=CompilationKind.DISJUNCTIVE_CONDITIONS_REMOVING)
+    comp2_res = compiler2.compile(comp1_res.problem)
 
     logging.info("Planning...")
+    res = engine.solve(comp2_res.problem)
+    #res = engine.solve(comp2_res.problem, optimality_guarantee=OptimalityGuarantee.SOLVED_OPTIMALLY)
 
-    res = engine.solve(comp_res_2.problem)
-    plan = None if res.plan is None else res.plan.replace_action_instances(comp_res_2.map_back_action_instance).replace_action_instances(comp_res.map_back_action_instance)
+    logging.info("PLANNING RESULT")
+    logging.info(res)
 
-    return plan
+    if res.plan is None:
+        return None
+    else:
+        return res.plan.replace_action_instances(comp2_res.map_back_action_instance).replace_action_instances(comp1_res.map_back_action_instance)

@@ -18,7 +18,7 @@ calibrate the IMU, etc.
 Choose the initial situation and press SOLVE for the initial plan. In this use-case, the durative actions
 are split into multiple instantaneous actions, that represent their start, abortion and final success, abortion or failure.
 Afterwards, by advancing the STEP field and pressing SOLVE again, the system simulate the advancement of the state of the
-durative actions and/or some possible unexpected change in the state, that require for a complete replanning.
+durative actions and/or some possible unexpected change in the state, that require a complete replanning.
 """
 SINGLE_DESCRIPTION_STYLE = LEFT_MARGIN + RIGHT_MARGIN
 
@@ -61,6 +61,7 @@ PLAN_PART_P_STYLE = f"font-weight: normal; font-size: 18px;"
 def main_page(gui: Gui):
     wp = jp.WebPage(delete_flag = False)
     wp.page_type = 'main'
+    wp.reload_interval = 1.0
     title_div = jp.Div(
         a=wp,
         classes=TITLE_DIV_CLASS,
@@ -76,6 +77,7 @@ def main_page(gui: Gui):
         src="/static/logos/magazino-jh.png",
         a=fbk_logo_div,
         classes="w3-image",
+        style="width: 400px",
         # style="height: 100%; length: auto;",
     )
     title_text_div = jp.Div(
@@ -126,22 +128,12 @@ def main_page(gui: Gui):
 
     gui.experiment_select = jp.Select(a=actions_div)
     gui.experiment_select.add(jp.Option(value="parallel_actions", text="Parallel actions"))
-    gui.experiment_select.add(jp.Option(value="two", text="Second initial state"))
-    gui.experiment_select.add(jp.Option(value="three", text="Third initial state"))
-    gui.experiment_select.add(jp.Option(value="four", text="Fourth initial state"))
+    gui.experiment_select.add(jp.Option(value="lost_capabilities", text="Lost capabilities"))
+    gui.experiment_select.add(jp.Option(value="run_until_job", text="Wait until a job arrives"))
     gui.experiment_select.on("click", gui.update_steps_control)
 
     gui.step_select = jp.Select(a=actions_div)
     gui.step_select.on("click", gui.update_state_and_goal)
-
-    solve = jp.Input(
-        a=actions_div,
-        value="SOLVE",
-        type="submit",
-        classes=ADD_BUTTON_CLASS,
-        style=ADD_BUTTON_STYLE,
-    )
-    solve.on('click', gui.generate_problem_click)
 
     # STATE AND GOAL SECTION
     gui.state_goal_div = jp.Div(
@@ -150,13 +142,23 @@ def main_page(gui: Gui):
             classes=PLAN_DIV_CLASS,
             style=PLAN_DIV_STYLE,
         )
-    _ = jp.P(text="State:", a=gui.state_goal_div, classes=PLAN_PART_P_CLASS, style=PLAN_PART_P_STYLE)
+    solve = jp.Input(
+        a=gui.state_goal_div,
+        value="SOLVE",
+        type="submit",
+        classes=ADD_BUTTON_CLASS,
+        style=ADD_BUTTON_STYLE,
+    )
     gui.state_div = jp.Div(
             a=gui.state_goal_div,
             text="Choose the experiment and the step to see the current state",
             classes=PLAN_PART_P_CLASS,
             style=PLAN_PART_P_STYLE,
     )
+    solve.on('click', gui.solve_btn_click)
+
+    gui.experiment_select.value = "parallel_actions"
+    gui.update_steps_control(None)
 
     # PLAN SECTION
     gui.plan_div = jp.Div(
@@ -165,7 +167,6 @@ def main_page(gui: Gui):
         classes=PLAN_DIV_CLASS,
         style=PLAN_DIV_STYLE,
     )
-
     gui.update_planning_execution()
 
     return wp

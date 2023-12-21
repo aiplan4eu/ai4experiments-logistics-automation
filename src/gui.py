@@ -2,6 +2,7 @@ import random
 import asyncio
 from enum import Enum, auto
 
+from typing import Optional
 
 import logging
 import queue
@@ -14,6 +15,7 @@ import unified_planning as up
 from unified_planning.shortcuts import *
 from unified_planning.plot import plot_time_triggered_plan
 
+from modified_planning import compute_plan
 
 GRAPH_IMAGE_LOCATION = "/logos/generated/graph"
 GRAPH_IMAGE_DIMENSIONS = "height: 100%; width: 100%;"
@@ -58,6 +60,10 @@ class Gui():
         state = {**state, **experiments[self.experiment_select.value]["steps"][int(self.step_select.value)]["state_change"]}
         keyvals = [f"{key}: {val}" for key, val in state.items()]
         self.state_div.delete_components()
+        self.state_div.text = ""
+        jp.P(a=self.state_div, text=experiments[self.experiment_select.value]["steps"][int(self.step_select.value)]["description"], classes=PLAN_PART_P_CLASS, style=PLAN_PART_P_STYLE)
+        p = jp.P(a=self.state_div, classes=PLAN_PART_P_CLASS, style=PLAN_PART_P_STYLE)
+        p.inner_html = "&nbsp;"
         for keyval in keyvals:
             _ = jp.P(a=self.state_div, text=keyval, classes=PLAN_PART_P_CLASS, style=PLAN_PART_P_STYLE)
 
@@ -68,55 +74,60 @@ class Gui():
                 self.step_select.add(jp.Option(value=str(s), text=f"Step {s}"))
         else:
             self.step_select.add(jp.Option(value="x", text="ERROR"))
+        self.step_select.value = "0"
+        self.update_state_and_goal(None)
+
+    def show_plan(self):
+        from main_page import PLAN_PART_P_CLASS, PLAN_PART_P_STYLE
+        self.plan_div.delete_components()
+        if self.plan is not None:
+            _ = jp.P(
+                a=self.plan_div,
+                text=f"A plan has been found, the executor would execute the first operator in boldface (*__start or *__abort) or wait for an event (on_*). Move to the next step to see the new state.",
+                classes=PLAN_PART_P_CLASS,
+                style=PLAN_PART_P_STYLE,
+            )
+            p = jp.P(a=self.plan_div, classes=PLAN_PART_P_CLASS, style=PLAN_PART_P_STYLE)
+            p.inner_html = "&nbsp;"
+            for idx, line in enumerate(str(self.plan).split("\n")):
+                if idx == 0:
+                    continue
+                p = jp.P(
+                    a=self.plan_div,
+                    text=line,
+                    classes=PLAN_PART_P_CLASS,
+                    style=PLAN_PART_P_STYLE,
+                )
+                if idx == 1:
+                    p.inner_html = '<b>' + line + '</b>'
 
     def update_planning_execution(self):
         from main_page import PLAN_PART_P_CLASS, PLAN_PART_P_STYLE
         if self.plan_div is not None:
             self.plan_div.delete_components()
-            if self.plan is not None:
-                _ = jp.P(
-                    a=self.plan_div,
-                    text=f"Found a plan!",
-                    classes=PLAN_PART_P_CLASS,
-                    style=PLAN_PART_P_STYLE,
-                )
-                for line in str(self.plan).split("\n"):
-                     _ = jp.P(
-                        a=self.plan_div,
-                        text=line,
-                        classes=PLAN_PART_P_CLASS,
-                        style=PLAN_PART_P_STYLE,
-                    )
-            elif self.plan_expected:
+            if self.plan_expected:
                 if self.mode == Mode.GENERATING_PROBLEM:
                     single_p = jp.P(
                         a=self.plan_div,
-                        text="No plan found!",
+                        text="No plan has been found!",
                         classes=PLAN_PART_P_CLASS,
                         style=PLAN_PART_P_STYLE,
                     )
                 else:
                     single_p = jp.P(
                         a=self.plan_div,
-                        text="Wait for planning to finish!",
+                        text="Wait for planning to finish...",
                         classes=PLAN_PART_P_CLASS,
                         style=PLAN_PART_P_STYLE,
                     )
+                    self.plan_div.update()
             else:
-                single_p = jp.P(
+                _ = jp.P(
                     a=self.plan_div,
-                    text="Plan will be displayed here!",
+                    text="The plan will be displayed here.",
                     classes=PLAN_PART_P_CLASS,
                     style=PLAN_PART_P_STYLE,
                 )
-            try:
-                asyncio.run(self.plan_div.update())
-            except RuntimeError:
-                self.plan_div.update()
-
-    def clear_activities_click(self, msg):
-        for jp_start_text in self.jp_components.values():
-            jp_start_text.value = ""
 
     def show_gui_thread(self):
         from main_page import main_page
@@ -125,7 +136,7 @@ class Gui():
             return main_page(self)
         jp.justpy(get_main_page)
 
-    def generate_problem_click(self, msg):
+    def solve_btn_click(self, msg):
         self.logger.info("Generating")
         if self.mode == Mode.GENERATING_PROBLEM:
             self.mode = Mode.OPERATING
@@ -136,7 +147,10 @@ class Gui():
                 self.plan_expected = True
                 self.update_planning_execution()
                 # unlock the planing method with the problem correctly generated
-                self.start_queue.put(None)
+                #self.start_queue.put(None)
+                self.plan = compute_plan(None, self)
+                self.show_plan()
+                self.reset_execution()
             else:
                 self.logger.info("Invalid input")
                 self.mode = Mode.GENERATING_PROBLEM
@@ -144,25 +158,9 @@ class Gui():
                 self.components_disabled(False)
 
     def components_disabled(self, disabled: bool):
-        return # TODO if needed
-        for c1 in self.jp_components.values():
-            c1.disabled = disabled
+        return
 
     def validate_input(self) -> bool:
-        # self.input_values = {}
-        # if self.jp_components is None:
-        #     return False
-        # for k, jp_start_text in self.jp_components.items():
-        #     start_text = jp_start_text.value
-        #     try:
-        #         start_value = float(start_text)
-        #     except ValueError:
-        #         jp_start_text.value = "Err: NAN"
-        #         return False
-        #     if start_value < 1:
-        #         jp_start_text.value = "Err: < 1"
-        #         return False
-        #     self.input_values[k] = start_value
         return True
 
 

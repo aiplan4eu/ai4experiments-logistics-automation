@@ -9,7 +9,6 @@ import os
 # sys.path.append(tsb_space_src_dir)
 
 
-import asyncio
 from functools import partial
 import sys
 import logging
@@ -18,15 +17,14 @@ import justpy as jp
 from up_graphene_engine.engine import GrapheneEngine
 
 
-from gui import Gui, Mode, reload_page
-from modified_planning import planning
+from gui import Gui, reload_page
+from modified_planning import compute_plan
 from threading import Thread
-
 
 
 def main():
 
-    engine = GrapheneEngine(port=8061)
+    #engine = GrapheneEngine(port=8061)
 
     gui = Gui()
 
@@ -37,17 +35,11 @@ def main():
         # wait for the user input to start planning
         gui.start_queue.get(block=True)
         gui.plan = planning(engine, gui, reload_page)
-
-        gui.update_planning_execution()
-
+        gui.show_plan()
         gui.reset_execution()
-        asyncio.run(reload_page())
-
-
-    server.wait_for_termination()
 
     gui_thread.join()
 
+
 if __name__ == "__main__":
-    # asyncio.run(main())
     main()
